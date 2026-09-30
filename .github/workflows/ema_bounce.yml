@@ -1,0 +1,53 @@
+name: EMA Bounce
+
+on:
+  schedule:
+    - cron: "2,32 * * * 0-5"   # cada 30 min (a y 2 y a y 32), de domingo a viernes (UTC)
+  workflow_dispatch:
+    inputs:
+      historico:
+        description: "Enviar las señales de los últimos 60 días (prueba)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write              # para guardar estado_ema.json en el repositorio
+
+concurrency:
+  group: ema-bounce
+  cancel-in-progress: false
+
+jobs:
+  revisar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+
+      - name: Revisión
+        if: ${{ !inputs.historico }}
+        run: python ema_bounce.py
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+      - name: Histórico de prueba
+        if: ${{ inputs.historico }}
+        run: python ema_bounce.py --historico
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+      - name: Guardar estado
+        if: ${{ always() && !inputs.historico }}
+        run: |
+          git config user.name "bot-ema"
+          git config user.email "bot-ema@users.noreply.github.com"
+          [ -f estado_ema.json ] || exit 0
+          git add estado_ema.json
+          git diff --staged --quiet || (git commit -m "Estado EMA Bounce" && git pull --rebase && git push)
