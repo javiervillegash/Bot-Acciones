@@ -2,7 +2,7 @@ name: EMA Bounce
 
 on:
   schedule:
-    - cron: "2,32 * * * 0-5"   # cada 30 min (a y 2 y a y 32), de domingo a viernes (UTC)
+        - cron: "2,17,32,47 * * * 0-5"   # cada 15 min, de domingo a viernes (UTC)
   workflow_dispatch:
     inputs:
       historico:
